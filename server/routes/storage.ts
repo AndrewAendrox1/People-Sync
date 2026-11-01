@@ -1,0 +1,18 @@
+import {Router} from 'express';
+import {randomBytes,createCipheriv} from 'node:crypto';
+import {S3Client,PutObjectCommand,GetObjectCommand,HeadObjectCommand} from '@aws-sdk/client-s3';
+import {getSignedUrl} from '@aws-sdk/s3-request-presigner';
+import {z} from 'zod';
+import {Document,Employee,Sensitive} from '../models';
+import {wrap,scope,own,permit,allowed,HttpError} from '../middleware';
+import {audit} from '../services/common';
+import {id} from '../validation';
+export const storageRoutes=Router();
+const s3=()=>{if(!process.env.S3_BUCKET)throw new HttpError(503,'Private storage is not configured. Set S3_BUCKET and AWS credentials.');return new S3Client({region:process.env.S3_REGION||'ap-south-1'});};
+storageRoutes.get('/',wrap(async(req,res)=>res.json({items:await Document.find(own(req,'documents')).select('-key')})));
+storageRoutes.post('/upload',wrap(async(req,res)=>{const data=z.object({name:z.string().min(2).max(150),mime:z.enum(['application/pdf','image/jpeg','image/png']),size:z.number().int().positive().max(5*1024*1024),employee:id.optional()}).parse(req.body);const employee=allowed(req.user,'documents')&&data.employee?data.employee:String(req.user.employee||'');if(!await Employee.exists({...scope(req),_id:employee}))throw new HttpError(404,'Employee not found');const client=s3();const key=`${req.org}/${employee}/${randomBytes(20).toString('hex')}`;const row=await Document.create({...data,organization:req.org,employee,key,status:'Uploading'});const url=await getSignedUrl(client,new PutObjectCommand({Bucket:process.env.S3_BUCKET,Key:key,ContentType:data.mime,ContentLength:data.size,ServerSideEncryption:'AES256'}),{expiresIn:120});res.json({id:row._id,url});}));
+storageRoutes.post('/:id/complete',wrap(async(req,res)=>{const doc=await Document.findOne({...own(req,'documents'),_id:req.params.id});if(!doc)throw new HttpError(404,'Document not found');const head=await s3().send(new HeadObjectCommand({Bucket:process.env.S3_BUCKET,Key:doc.key}));if(head.ContentLength!==doc.size||head.ContentType!==doc.mime)throw new HttpError(400,'Uploaded file metadata does not match');doc.status='Pending Review';await doc.save();await audit(req,'upload','Document',doc._id);res.json({message:'Document uploaded for review'});}));
+storageRoutes.get('/:id/access',wrap(async(req,res)=>{const doc=await Document.findOne({...own(req,'documents'),_id:req.params.id,status:{$ne:'Uploading'}});if(!doc)throw new HttpError(404,'Document not found');const url=await getSignedUrl(s3(),new GetObjectCommand({Bucket:process.env.S3_BUCKET,Key:doc.key,ResponseContentDisposition:'attachment'}),{expiresIn:60});await audit(req,'access','Document',doc._id);res.json({url});}));
+storageRoutes.post('/sensitive',permit('documents'),wrap(async(req,res)=>{const data=z.object({employee:id,aadhaarLast4:z.string().regex(/^\d{4}$/),pan:z.string().regex(/^[A-Z]{5}\d{4}[A-Z]$/),uan:z.string().regex(/^\d{12}$/)}).parse(req.body);if(!await Employee.exists({...scope(req),_id:data.employee}))throw new HttpError(404,'Employee not found');const key=process.env.DATA_ENCRYPTION_KEY;if(!key||!/^[a-f\d]{64}$/i.test(key))throw new HttpError(503,'Encryption key is not configured');const iv=randomBytes(12);const cipher=createCipheriv('aes-256-gcm',Buffer.from(key,'hex'),iv);const encrypted=Buffer.concat([cipher.update(JSON.stringify(data)),cipher.final()]);await Sensitive.findOneAndUpdate({...scope(req),employee:data.employee},{$set:{cipher:encrypted.toString('hex'),iv:iv.toString('hex'),tag:cipher.getAuthTag().toString('hex')}},{upsert:true});await audit(req,'update-sensitive','Employee',data.employee);res.json({message:'Identifiers securely stored'});}));
+
+

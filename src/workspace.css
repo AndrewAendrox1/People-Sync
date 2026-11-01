@@ -1,0 +1,59 @@
+/* Workspace hierarchy: legible data, quiet surfaces, consistent controls. */
+:root{color:#202a38;background:#f5f6f8;font-size:14px}
+.workspace .sidebar{background:#fcfcfd;overflow-y:auto}
+.workspace .sidebar nav a,.workspace .sidebar-bottom>a{font-size:12px;min-height:40px;border-radius:6px;color:#536174}
+.workspace .sidebar a.active{background:#eaf0fb;color:#2054a5;font-weight:650;box-shadow:inset 3px 0 #2463ce}
+.workspace .nav-label{color:#667286;font-size:10px;letter-spacing:1px}
+.workspace .topbar{background:#fff;height:72px}
+.workspace .content{padding-top:32px}
+.workspace .page-heading h1{font-size:28px;letter-spacing:-.7px;font-weight:650}
+.workspace .page-heading p{font-size:13px;color:#657185;max-width:650px}
+.workspace .panel,.workspace .stat-card{border-color:#e1e5eb;border-radius:10px;box-shadow:0 1px 2px #15203404}
+.workspace .panel-heading h2{font-size:15px}
+.workspace .panel-heading p,.workspace .stat-card p{font-size:12px;color:#59667a}
+.workspace .stat-card strong{font-variant-numeric:tabular-nums;font-size:32px;letter-spacing:-1px}
+.workspace .stat-card>small{font-size:11px;color:#667286}
+.workspace .overview-banner{background:#f0f4fa;border-color:#e0e7f0}
+.workspace .overview-banner b{font-size:13px}
+.workspace .overview-banner small{font-size:11px;color:#5f7088}
+.workspace th{background:#f8f9fb;font-size:11px;letter-spacing:.3px;color:#5c6879;font-weight:650;padding:13px 18px}
+.workspace td{font-size:12px;padding:16px 18px;line-height:1.5}
+.workspace tbody tr:hover{background:#fafbfd}
+.workspace .badge{font-size:10px;font-weight:600;border-radius:5px}
+.workspace .topbar .global-search input{font-size:12px}
+.workspace .breadcrumb{font-size:12px}
+.workspace .heading-actions button,.workspace .heading-actions input,.workspace .heading-actions a{font-size:12px;min-height:38px}
+.workspace .primary,.auth-form .primary{background:#245dcc;border-color:#245dcc;box-shadow:none;min-height:42px}
+.workspace .primary:hover,.auth-form .primary:hover{background:#194cae}
+.form-field{display:flex;flex-direction:column;gap:8px;min-width:0}
+.form-field.full{grid-column:1/-1}
+.form-field label{display:flex;align-items:baseline;justify-content:space-between;gap:8px;font-size:12px;font-weight:550;color:#39475c}
+.form-field input,.form-field select,.form-field textarea{width:100%;font-size:14px;min-height:42px;border-color:#ccd4df}
+.form-field input[type=checkbox]{width:18px;min-height:18px;align-self:flex-start}
+.field-optional{font-weight:400;color:#737e8e;font-size:10px}
+.field-error{color:#b42318;font-size:12px;line-height:1.5}
+[aria-invalid=true]{border-color:#c7463b!important;background:#fffafa}
+.form footer{justify-content:flex-end}
+.form .error{font-size:13px;line-height:1.6;border:1px solid #f3d3d0}
+.auth-form .form-field label{font-size:13px}
+.auth-form .form-field input{min-height:48px}
+.auth-form .forgot{display:block;float:none;text-align:left;margin-top:16px;font-size:13px}
+.auth-form>div{padding-block:24px}
+.auth-art .orb,.auth-art .float-card{display:none}
+.auth-art{background:#142c50}
+.auth-art h2{letter-spacing:-1.5px}
+.integration-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:24px}
+.integration-card{padding:24px;display:flex;flex-direction:column;gap:18px}
+.integration-heading{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.integration-card p,.integration-guide p{font-size:13px;color:#627086;line-height:1.75}
+.integration-card dl{display:flex;justify-content:space-between;margin:0;font-size:12px;border-top:1px solid #e8ecf1;padding-top:16px;gap:12px}
+.integration-card dt{color:#6c7787}.integration-card dd{margin:0;font-weight:550;text-align:right}
+.integration-missing{background:#faf7ef;padding:12px;border-radius:6px;color:#79602c;font-size:11px}
+.integration-missing code{display:block;margin-top:8px;overflow-wrap:anywhere;line-height:1.6}
+.integration-card button{margin-top:auto;min-height:40px}
+.integration-guide{margin-top:24px;padding:24px;max-width:850px}
+.integration-guide p{margin:12px 0 18px}
+button:focus-visible,a:focus-visible{outline:3px solid #87aef0;outline-offset:3px}
+@media(max-width:1050px){.integration-grid{grid-template-columns:1fr}.workspace .sidebar nav a,.workspace .sidebar-bottom>a{font-size:11px}}
+@media(max-width:700px){.workspace .topbar{height:64px}.workspace .content{padding:24px 16px}.workspace .page-heading h1{font-size:25px}.workspace .user-menu>.icon-button{display:inline-flex}.workspace .sidebar nav a,.workspace .sidebar-bottom>a{font-size:13px}.integration-card{padding:20px}.workspace .stat-card strong{font-size:28px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation:none!important;transition:none!important}}

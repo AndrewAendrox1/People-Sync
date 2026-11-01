@@ -1,0 +1,21 @@
+import {describe,it,expect} from 'vitest';
+import {calculate,workDate,windowFor,ShiftPolicy} from '../server/services/attendance';
+import {billableAmount,validSignature} from '../server/routes/billing';
+import {createHmac} from 'node:crypto';
+const shift:ShiftPolicy={start:'09:00',end:'18:00',secondHalf:'13:30',breakMinutes:60,graceMinutes:15,halfMinutes:210,fullMinutes:420};
+const at=(time:string)=>new Date(`2026-10-26T${time}:00+05:30`);
+describe('Attendance engine',()=>{
+it('keeps the exact grace boundary inclusive',()=>expect(calculate('2026-10-26',shift,'Asia/Kolkata',at('09:15'),at('18:00')).late).toBe(false));
+it('marks arrivals beyond grace late',()=>expect(calculate('2026-10-26',shift,'Asia/Kolkata',at('09:16'),at('18:00')).late).toBe(true));
+it('qualifies an on-time full day',()=>expect(calculate('2026-10-26',shift,'Asia/Kolkata',at('09:10'),at('18:00')).status).toBe('Present'));
+it('does not mark afternoon-only work as a full day',()=>{const r=calculate('2026-10-26',shift,'Asia/Kolkata',at('13:30'),at('18:00'));expect(r.status).toBe('Half Day');expect(r.firstHalf).toBe('Absent');expect(r.secondHalf).toBe('Present')});
+it('qualifies morning-only work independently',()=>expect(calculate('2026-10-26',shift,'Asia/Kolkata',at('09:00'),at('13:30')).status).toBe('Half Day'));
+it('does not invent duration for missing clock-out',()=>{const r=calculate('2026-10-26',shift,'Asia/Kolkata',at('09:00'),undefined,at('19:00'));expect(r.status).toBe('Missing Punch');expect(r.minutes).toBeNull()});
+it('does not finalize absence before shift end',()=>expect(calculate('2026-10-26',shift,'Asia/Kolkata',undefined,undefined,at('10:00')).status).toBe('Not Started'));
+it('finalizes absence after shift end',()=>expect(calculate('2026-10-26',shift,'Asia/Kolkata',undefined,undefined,at('19:00')).status).toBe('Absent'));
+it('subtracts the configured unpaid break',()=>expect(calculate('2026-10-26',shift,'Asia/Kolkata',at('09:00'),at('18:00')).minutes).toBe(480));
+it('rejects reverse intervals',()=>expect(()=>calculate('2026-10-26',shift,'Asia/Kolkata',at('18:00'),at('09:00'))).toThrow());
+it('resolves overnight shifts to the previous workday',()=>{const night={...shift,start:'22:00',end:'07:00',secondHalf:'02:30'};expect(workDate(new Date('2026-10-27T02:00:00+05:30'),night,'Asia/Kolkata')).toBe('2026-10-26');const r=calculate('2026-10-26',night,'Asia/Kolkata',at('22:00'),new Date('2026-10-27T07:00:00+05:30'));expect(r.status).toBe('Present');expect(r.minutes).toBe(480)});
+it('uses leave exceptions without inventing punches',()=>expect(calculate('2026-10-26',shift,'Asia/Kolkata',undefined,undefined,at('19:00'),'Leave').status).toBe('Leave'));
+});
+describe('Billing',()=>{it.each([[0,0],[1,350],[10,3500],[25,8750],[50,17500],[100,35000]])('prices %i seats as %i rupees',(seats,total)=>expect(billableAmount(seats)).toBe(total));it('verifies raw-body webhook signatures',()=>{const body=Buffer.from('{"event":"subscription.charged"}');const sig=createHmac('sha256','secret').update(body).digest('hex');expect(validSignature(body,sig,'secret')).toBe(true);expect(validSignature(Buffer.from('{}'),sig,'secret')).toBe(false);expect(validSignature(body,'short','secret')).toBe(false)})});

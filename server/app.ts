@@ -1,0 +1,33 @@
+import express from 'express';
+import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
+import {rateLimit} from 'express-rate-limit';
+import swagger from 'swagger-ui-express';
+import path from 'node:path';
+import {config} from './config';
+import {integrationRoutes} from './routes/integrations';
+import {auth,errorHandler} from './middleware';
+import {authRoutes} from './routes/auth';
+import {employeeRoutes} from './routes/employees';
+import {attendanceRoutes,shiftRoutes} from './routes/attendance';
+import {requestRoutes} from './routes/requests';
+import {moduleRoutes} from './routes/modules';
+import {storageRoutes} from './routes/storage';
+import {billingRoutes,webhook} from './routes/billing';
+export const app=express();
+app.disable('x-powered-by');app.use(helmet());
+app.post('/api/v1/billing/webhook',express.raw({type:'application/json',limit:'1mb'}),webhook);
+app.use(express.json({limit:'1mb'}),cookieParser());
+app.use('/api',rateLimit({windowMs:60000,limit:300,standardHeaders:'draft-8',legacyHeaders:false}));
+app.use('/api',(req,res,next)=>{if(!['GET','HEAD','OPTIONS'].includes(req.method)&&req.headers['x-requested-with']!=='PeopleSync'){res.status(403).json({error:'Missing request protection header'});return;}const origin=req.headers.origin;if(origin&&origin!==new URL(config.url).origin){res.status(403).json({error:'Origin not allowed'});return;}next();});
+app.get('/api/health',(req,res)=>res.json({status:'ok'}));
+app.use('/api/v1/auth',authRoutes);
+app.use('/api/v1',auth);
+app.use('/api/v1/integrations',integrationRoutes);
+app.use('/api/v1/employees',employeeRoutes);app.use('/api/v1/attendance',attendanceRoutes);app.use('/api/v1/shifts',shiftRoutes);app.use('/api/v1/requests',requestRoutes);app.use('/api/v1/documents',storageRoutes);app.use('/api/v1/billing',billingRoutes);app.use('/api/v1',moduleRoutes);
+const paths=Object.fromEntries(['employees','shifts','requests','projects','people-start','notifications','holidays','leaves/policies','leaves/balances','settings','billing','audit-logs','reports'].map(p=>[`/api/v1/${p}`,{get:{summary:`Read ${p}`,security:[{cookieAuth:[]}],responses:{200:{description:'Tenant-scoped records'},401:{description:'Unauthenticated'},403:{description:'Forbidden'}}}}]));
+app.use('/api/docs',swagger.serve,swagger.setup({openapi:'3.0.3',info:{title:'People Sync API',version:'0.1.0'},components:{securitySchemes:{cookieAuth:{type:'apiKey',in:'cookie',name:'ps_session'}}},paths}));
+app.use('/api',(req,res)=>res.status(404).json({error:'Endpoint not found'}));
+if(config.production){app.use(express.static(path.resolve('dist')));app.get('/{*path}',(req,res)=>res.sendFile(path.resolve('dist/index.html')));}
+app.use(errorHandler);
+
